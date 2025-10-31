@@ -1,6 +1,8 @@
-# 微信自动化 HTTP 服务
+# 微信 Windows 版自动化发送服务（支持 4.0+ 版本）
 
-基于 Flask 和 uiautomation 的微信消息自动化发送系统。通过 HTTP API 接收请求，使用队列管理，自动控制微信 PC 客户端发送消息。
+基于 Flask + uiautomation 的 HTTP API 服务，通过 UI 自动化控制微信客户端发送消息。
+支持文本、图片、批量发送和队列管理。非 HOOK、非协议，安全可靠。
+本代码和文档完全由AI生成，有些怪异错误自行脑补。
 
 ## ✨ 项目特性
 
@@ -315,7 +317,7 @@ Get-Content wechat_automation.log -Tail 50
 
 ## 📜 版本历史
 
-### v1.1.0 (2025-10-30)
+### v1.1.0 (2025-10-31)
 - ✅ 新增图片发送功能（sendpic action）
 - ✅ 支持通过 URL 下载图片并发送
 - ✅ 自动剪贴板操作发送图片
@@ -333,19 +335,4 @@ Get-Content wechat_automation.log -Tail 50
 
 本项目仅供学习和研究使用。
 
----
-
-## 附加项目
-
-本仓库还包含其他 Windows 自动化测试案例：
-
-### WinAppDriver 测试案例
-
-基于 WinAppDriver 的 Windows 应用程序自动化测试示例（位于 `temp/` 目录）。
-
-- 记事本自动化测试
-- 计算器自动化测试
-- 元素检查工具
-
-详见 [temp/README.md](temp/README.md)
 
