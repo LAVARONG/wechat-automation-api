@@ -1,0 +1,9 @@
+{
+    "token": "your_secret_token_here",
+    "host": "127.0.0.1",
+    "port": 8808,
+    "message_interval": 1,
+    "log_level": "INFO",
+    "log_file": "wechat_automation.log"
+}
+

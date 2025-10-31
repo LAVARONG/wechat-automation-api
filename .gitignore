@@ -1,0 +1,111 @@
+# Python 相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE 相关
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# 操作系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.bak
+
+# 日志文件
+*.log
+logs/
+wechat_automation.log
+
+# 配置文件（包含敏感信息）
+config.json
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 图片缓存和下载的临时文件
+temp_images/
+downloaded_images/
+*.jpg.tmp
+*.png.tmp
+
+# 测试相关
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 打包文件
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# 编译的二进制文件
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 用户特定的配置备份
+config.json.backup
+config.json.bak
+
+# WinAppDriver 相关
+WinAppDriver.exe.log
+

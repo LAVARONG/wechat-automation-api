@@ -1,0 +1,239 @@
+# Cursor AI 助手规则 - 微信自动化项目
+
+## 项目概述
+这是一个基于 Flask 和 uiautomation 的微信自动化发送系统，通过 HTTP API 接收请求，使用队列管理，自动控制微信 PC 客户端发送消息。
+
+## 核心技术栈
+- Python 3.7+
+- Flask (Web 框架)
+- uiautomation (Windows UI 自动化)
+- requests (HTTP 请求)
+- Pillow (图片处理)
+- pywin32 (Windows API)
+
+## 开发环境
+- 操作系统：Windows 10/11
+- Shell：PowerShell
+- Python 版本：3.7+
+- 目标应用：微信 PC 客户端
+
+## 编码规范
+
+### 语言要求
+1. **所有响应必须使用中文**
+2. **所有代码注释必须使用中文**
+3. 变量名和函数名使用英文（遵循 Python PEP8 规范）
+4. 文档和说明文件使用中文
+
+### Python 代码规范
+1. 遵循 PEP8 编码规范
+2. 使用 4 个空格缩进（不使用 Tab）
+3. 函数和类必须有中文文档字符串（docstring）
+4. 关键逻辑必须添加中文注释
+5. 使用类型提示（type hints）增强代码可读性
+
+### 命名规范
+- 类名：使用 CapWords 风格，如 `MessageQueue`, `WechatController`
+- 函数名：使用小写加下划线，如 `send_message()`, `get_status()`
+- 常量：使用大写加下划线，如 `DEFAULT_INTERVAL`, `MAX_RETRIES`
+- 私有方法：使用单下划线前缀，如 `_validate_token()`
+
+## Windows 特定规范
+
+### 命令使用
+1. **优先使用 PowerShell 命令**，而不是 bash 命令
+   - 使用 `Get-Content` 而不是 `cat`
+   - 使用 `Remove-Item` 而不是 `rm`
+   - 使用 `Copy-Item` 而不是 `cp`
+2. 路径使用反斜杠 `\` 或双反斜杠 `\\`
+3. 注意 Windows 文件路径的特殊性
+
+### 示例
+```powershell
+# 查看日志
+Get-Content wechat_automation.log -Wait
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动服务
+python app.py
+```
+
+## 项目特定规范
+
+### 日志规范
+1. 使用项目的统一日志系统
+2. 日志级别：DEBUG < INFO < WARNING < ERROR < CRITICAL
+3. 关键操作必须记录日志
+4. 错误必须记录详细的堆栈信息
+
+### API 设计规范
+1. 所有 API 必须验证 token
+2. 使用 RESTful 风格
+3. 返回统一的 JSON 格式：
+   ```python
+   {
+       "success": True/False,
+       "message": "说明信息",
+       "data": {}  # 可选
+   }
+   ```
+
+### 错误处理
+1. 使用 try-except 捕获异常
+2. 记录详细的错误信息到日志
+3. 向用户返回友好的错误提示
+4. 单个任务失败不应影响整体服务
+
+## 文档规范
+
+### 更新日志（Changelog）
+位置：`/docs/changelog.md`
+
+**更新时机：**
+- 每次功能更新
+- 重大 bug 修复
+- API 变更
+
+**格式要求：**
+```markdown
+### v版本号 (YYYY-MM-DD)
+- ✅ 新功能描述
+- 🐛 Bug 修复描述
+- 🔄 修改内容描述
+```
+
+**注意：**
+1. 新内容在上面，旧内容在下面
+2. 记录准确的修改日期
+3. 使用简要清晰的语言
+4. 必须先询问用户是否需要更新文档，同意后再记录
+
+### 详细文档
+位置：`/docs/YYMM/DDDescription.md`
+
+**使用场景：**
+- 特别复杂的功能实现
+- 架构变更
+- 重要的技术决策
+
+**命名规范：**
+- 格式：`/docs/YYMM/DD功能名称.md`
+- 示例：`/docs/2510/30图片发送功能.md`
+- DD 是日期（01-31）
+
+## MCP 协议使用
+
+### Context7 使用
+当涉及以下库或技术时，优先调用 Context7 获取最新文档：
+- Flask (Web 框架)
+- uiautomation (UI 自动化)
+- requests (HTTP 库)
+- Pillow (图片处理)
+- pywin32 (Windows API)
+
+### Interactive Feedback
+1. 需要询问问题时，调用 MCP `interactive_feedback`
+2. 完成用户请求前，调用 MCP `interactive_feedback` 确认
+3. 持续调用直到用户反馈为空
+
+## 开发指南
+
+### 调试规范
+1. **尽量不要自动调试运行**
+2. 询问用户是否需要运行测试
+3. 提供清晰的测试步骤说明
+
+### 代码审查
+1. 检查代码是否符合 PEP8 规范
+2. 确认所有注释都是中文
+3. 验证错误处理是否完善
+4. 检查日志记录是否充分
+
+### 新功能开发
+1. 先理解现有代码结构
+2. 保持代码风格一致
+3. 添加适当的错误处理
+4. 更新相关文档
+5. 询问用户是否需要更新 changelog
+
+## 常见任务模板
+
+### 添加新 API 端点
+```python
+@app.route('/new_endpoint', methods=['POST'])
+def new_endpoint():
+    """新端点的中文描述"""
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        
+        # 验证 token
+        if not validate_token(data.get('token')):
+            return jsonify({
+                'success': False,
+                'error': '无效的 token'
+            }), 401
+        
+        # 业务逻辑
+        result = do_something(data)
+        
+        # 返回结果
+        return jsonify({
+            'success': True,
+            'message': '操作成功',
+            'data': result
+        })
+        
+    except Exception as e:
+        logger.error(f"处理请求时发生错误: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+```
+
+### 添加新功能到 WechatController
+```python
+def new_feature(self, param1: str, param2: int) -> bool:
+    """
+    新功能的中文描述
+    
+    Args:
+        param1: 参数1的说明
+        param2: 参数2的说明
+        
+    Returns:
+        bool: 是否成功
+    """
+    try:
+        # 实现逻辑
+        self.logger.info(f"执行新功能: param1={param1}, param2={param2}")
+        
+        # 具体实现
+        result = self._do_something(param1, param2)
+        
+        return result
+        
+    except Exception as e:
+        self.logger.error(f"新功能执行失败: {e}", exc_info=True)
+        return False
+```
+
+## 注意事项
+1. 始终考虑 Windows 环境的特殊性
+2. 微信 UI 可能会变化，需要灵活处理
+3. 注意线程安全问题（消息队列）
+4. 确保配置文件不被提交到 Git
+5. 保护用户的敏感信息（token 等）
+6. 测试时使用测试用的联系人和群组
+
+## 问题排查
+当遇到问题时：
+1. 检查日志文件 `wechat_automation.log`
+2. 确认微信是否已启动并登录
+3. 验证联系人名称是否正确
+4. 检查 Windows UI 自动化权限
+5. 查看是否有防火墙或安全软件阻止
+
