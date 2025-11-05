@@ -55,9 +55,88 @@ class WeChatController:
             logger.error(f"获取微信窗口失败: {str(e)}")
             return None
     
+    def _is_session_selected(self, session_item):
+        """
+        检查会话项是否已被选中
+        
+        Args:
+            session_item: 会话项控件
+            
+        Returns:
+            bool: 是否已选中
+        """
+        try:
+            # 通过 GetPattern 获取 SelectionItemPattern
+            # PatternId.SelectionItemPattern = 10010
+            pattern = session_item.GetPattern(10010)
+            if pattern and hasattr(pattern, 'IsSelected'):
+                is_selected = pattern.IsSelected
+                logger.debug(f"会话选中状态: {is_selected}")
+                return is_selected
+            
+            logger.debug("无法获取选中状态")
+            return False
+            
+        except Exception as e:
+            logger.debug(f"检查选中状态失败: {str(e)}")
+            return False
+    
+    def _activate_from_session_list(self, contact_name):
+        """
+        从左侧会话列表直接激活对话（快速方法）
+        
+        Args:
+            contact_name: 联系人名称
+            
+        Returns:
+            bool: 是否成功激活
+        """
+        try:
+            # 获取微信窗口
+            wx = self._get_wechat_window()
+            if not wx:
+                return False
+            
+            # 查找会话列表中的联系人
+            # AutomationId 格式: session_item_[联系人名]
+            automation_id = f"session_item_{contact_name}"
+            
+            # 查找会话项
+            session_item = wx.Control(
+                ClassName="mmui::ChatSessionCell",
+                AutomationId=automation_id,
+                searchDepth=15
+            )
+            
+            if session_item.Exists(0, 0):
+                # 检查是否已经选中
+                if self._is_session_selected(session_item):
+                    logger.info(f"会话 '{contact_name}' 已经处于选中状态，无需点击")
+                    return True
+                
+                # 未选中，需要点击激活
+                logger.info(f"点击激活会话: {contact_name}")
+                session_item.Click()
+                time.sleep(0.3)
+                
+                # 验证是否选中成功
+                if self._is_session_selected(session_item):
+                    logger.info(f"从会话列表成功激活联系人: {contact_name}")
+                    return True
+                else:
+                    logger.warning(f"点击后会话 '{contact_name}' 未被选中")
+                    return False
+            else:
+                logger.debug(f"会话列表中未找到 {contact_name}，将使用搜索方式")
+                return False
+                
+        except Exception as e:
+            logger.debug(f"从会话列表激活失败: {str(e)}")
+            return False
+    
     def search_contact(self, contact_name):
         """
-        搜索联系人
+        搜索联系人（双重策略：优先从会话列表激活，找不到再搜索）
         
         Args:
             contact_name: 联系人名称
@@ -66,6 +145,13 @@ class WeChatController:
             bool: 搜索是否成功
         """
         try:
+            # 策略1: 优先尝试从会话列表直接激活（更快）
+            if self._activate_from_session_list(contact_name):
+                return True
+            
+            # 策略2: 降级使用搜索框（兜底方案）
+            logger.info(f"使用搜索框查找联系人: {contact_name}")
+            
             # 获取微信窗口
             wx = self._get_wechat_window()
             if not wx:
@@ -84,13 +170,29 @@ class WeChatController:
             # 点击搜索框并输入
             search_box.Click()
             time.sleep(0.3)
-            search_box.SendKeys('{Ctrl}a')  # 清空搜索框
-            time.sleep(0.1)
             search_box.SendKeys(contact_name + '{Enter}')
             time.sleep(0.8)
             
-            logger.info(f"成功搜索联系人: {contact_name}")
-            return True
+            # 搜索后，尝试验证会话是否已选中
+            automation_id = f"session_item_{contact_name}"
+            session_item = wx.Control(
+                ClassName="mmui::ChatSessionCell",
+                AutomationId=automation_id,
+                searchDepth=15
+            )
+            
+            if session_item.Exists(0, 0):
+                if self._is_session_selected(session_item):
+                    logger.info(f"搜索后确认会话 '{contact_name}' 已选中")
+                    return True
+                else:
+                    logger.warning(f"搜索后会话 '{contact_name}' 未被选中")
+                    return False
+            else:
+                # 搜索框可能找到的是其他类型的结果（如公众号、小程序等）
+                # 这种情况下暂时认为搜索成功，保持向下兼容
+                logger.info(f"完成搜索联系人: {contact_name}（无法验证选中状态）")
+                return True
             
         except Exception as e:
             logger.error(f"搜索联系人 '{contact_name}' 失败: {str(e)}")
