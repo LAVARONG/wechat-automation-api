@@ -34,17 +34,17 @@ class WeChatController:
         """获取微信窗口对象"""
         try:
             # 第一次尝试查找微信窗口
-            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='mmui::MainWindow')
+            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='Qt51514QWindowIcon')
             if wx.Exists(0, 0):
                 return wx
             
             # 第一次找不到，尝试用快捷键唤醒微信窗口（Ctrl+Alt+W 是微信的默认快捷键）
             logger.info("未找到微信窗口，尝试使用快捷键 Ctrl+Alt+W 唤醒微信...")
             auto.SendKeys('{Ctrl}{Alt}w', waitTime=0.1)
-            time.sleep(1.0)  # 等待窗口显示
+            time.sleep(2.0)  # 等待窗口显示
             
             # 第二次尝试查找微信窗口
-            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='mmui::MainWindow')
+            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='Qt51514QWindowIcon')
             if wx.Exists(0, 0):
                 logger.info("成功通过快捷键唤醒微信窗口")
                 return wx
