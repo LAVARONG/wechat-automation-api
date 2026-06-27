@@ -97,7 +97,7 @@ def test_send_single_message():
     data = {
         "token": TOKEN,
         "action": "sendtext",
-        "to": ["线报转发"],
+        "to": ["妈妈"],
         "content": "这是一条API测试消息 - " + time.strftime("%H:%M:%S")
     }
     
