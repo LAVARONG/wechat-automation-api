@@ -84,7 +84,7 @@ def validate_request_data(data):
             return False, f"缺少必需字段: {field}"
     
     # 验证 action
-    if data['action'] not in ['sendtext', 'sendpic']:
+    if data['action'] not in ['sendtext', 'sendpic', 'sendfile']:
         return False, f"不支持的操作: {data['action']}"
     
     # 验证 to 字段是否为列表
@@ -114,12 +114,20 @@ def send_message():
         "content": "消息内容"
     }
     
-    请求格式 (发送图片):
+    请求格式 (发送图片URL或本地文件):
     {
         "token": "123123",
         "action": "sendpic",
         "to": ["联系人1", "联系人2"],
         "content": "图片的URL"
+    }
+
+    请求格式 (发送本地文件):
+    {
+        "token": "123123",
+        "action": "sendfile",
+        "to": ["联系人1", "联系人2"],
+        "content": "C:\\path\\to\\file.zip"
     }
     
     响应格式:
