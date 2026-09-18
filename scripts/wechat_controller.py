@@ -2,6 +2,36 @@
 微信控制器模块
 封装微信操作，提供搜索联系人和发送消息的功能
 """
+import sys
+import ctypes
+
+# 缓存 default 桌面句柄，避免多线程或重复调用造成句柄泄露
+_cached_desktop_handle = None
+
+
+def _attach_to_default_desktop():
+    """
+    确保当前线程绑定到 Windows 交互式桌面 'default'。
+    在子进程、Agent 或隔离桌面环境下，线程可能默认关联到隔离虚拟桌面，
+    必须在导入任何 UI/COM 库（如 uiautomation）之前切换，否则线程会被锁定在隔离桌面。
+    """
+    global _cached_desktop_handle
+    if sys.platform != "win32":
+        return
+    try:
+        user32 = ctypes.windll.user32
+        if _cached_desktop_handle is None:
+            # DESKTOP_ALL_ACCESS 权限掩码为 0x1FF
+            _cached_desktop_handle = user32.OpenDesktopW("default", 0, False, 0x1FF)
+        if _cached_desktop_handle:
+            user32.SetThreadDesktop(_cached_desktop_handle)
+    except Exception:
+        pass
+
+
+# 必须在导入 uiautomation 之前切换桌面
+_attach_to_default_desktop()
+
 import uiautomation as auto
 import time
 import logging
@@ -78,12 +108,45 @@ class WeChatController:
         except Exception as e:
             return self._fail("LOCAL_FILE_PATH_ERROR", f"解析本地文件路径异常: {str(e)}"), None
         
+    def _find_main_window(self):
+        """
+        跨版本定位微信主窗口。
+        兼容策略：
+        1. 微信 4.x (Qt 架构)：ClassName='mmui::MainWindow'。
+           注意：微信 4.x 窗口 Name 为当前登录账号昵称（如 "LAVA"），绝不能限定 Name="微信"！
+        2. 微信 3.x (旧版 Win32/CEF 架构)：ClassName='WeChatMainWndForPC'。
+        3. 兜底策略：Name='微信' 顶层窗口。
+        """
+        try:
+            # 策略1: 优先匹配微信 4.x 主窗口类名 mmui::MainWindow（不限定 Name，兼容任意昵称）
+            wx = auto.WindowControl(searchDepth=1, ClassName='mmui::MainWindow')
+            if wx.Exists(0, 0):
+                return wx
+
+            # 策略2: 兼容微信 3.x 旧版主窗口类名 WeChatMainWndForPC
+            wx = auto.WindowControl(searchDepth=1, ClassName='WeChatMainWndForPC')
+            if wx.Exists(0, 0):
+                return wx
+
+            # 策略3: 兼容通过窗口名称 "微信" 查找（部分旧版或未重命名版本）
+            wx = auto.WindowControl(searchDepth=1, Name="微信")
+            if wx.Exists(0, 0):
+                return wx
+
+            return None
+        except Exception as e:
+            logger.debug(f"定位微信主窗口异常: {e}")
+            return None
+
     def _get_wechat_window_result(self):
         """获取微信窗口对象"""
         try:
+            # 确保当前执行线程已关联交互式 default 桌面
+            _attach_to_default_desktop()
+
             # 第一次尝试查找微信窗口
-            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='mmui::MainWindow')
-            if wx.Exists(0, 0):
+            wx = self._find_main_window()
+            if wx and wx.Exists(0, 0):
                 return self._ok("已找到微信窗口"), wx
             
             # 第一次找不到，尝试用快捷键唤醒微信窗口（Ctrl+Alt+W 是微信的默认快捷键）
@@ -92,8 +155,8 @@ class WeChatController:
             time.sleep(1.0)  # 等待窗口显示
             
             # 第二次尝试查找微信窗口
-            wx = auto.WindowControl(searchDepth=1, Name="微信", ClassName='mmui::MainWindow')
-            if wx.Exists(0, 0):
+            wx = self._find_main_window()
+            if wx and wx.Exists(0, 0):
                 logger.info("成功通过快捷键唤醒微信窗口")
                 return self._ok("已唤醒并找到微信窗口"), wx
             else:
@@ -156,11 +219,11 @@ class WeChatController:
             # AutomationId 格式: session_item_[联系人名]
             automation_id = f"session_item_{contact_name}"
             
-            # 查找会话项
+            # 查找会话项（微信 4.x 实际深度探测为 14，适当加深至 25 避免层级微调失效）
             session_item = wx.Control(
                 ClassName="mmui::ChatSessionCell",
                 AutomationId=automation_id,
-                searchDepth=15
+                searchDepth=25
             )
             
             if session_item.Exists(0, 0):
@@ -224,8 +287,10 @@ class WeChatController:
             wx.SetActive()
             time.sleep(0.5)
             
-            # 查找搜索框
-            search_box = wx.EditControl(Name='搜索')
+            # 查找搜索框（优先 Name='搜索'，类名兜底 mmui::XValidatorTextEdit）
+            search_box = wx.EditControl(Name='搜索', searchDepth=25)
+            if not search_box.Exists(0, 0):
+                search_box = wx.EditControl(ClassName='mmui::XValidatorTextEdit', searchDepth=25)
             if not search_box.Exists(0, 0):
                 message = "未找到微信搜索框，可能是微信版本 UI 结构变化、窗口未完全加载或系统 UI 自动化不可用。"
                 logger.error(message)
@@ -258,12 +323,12 @@ class WeChatController:
             search_box.SendKeys('{Enter}')
             time.sleep(0.8)
             
-            # 搜索后，尝试验证会话是否已选中
+            # 搜索后，尝试验证会话是否已选中（放宽搜索深度至 25）
             automation_id = f"session_item_{contact_name}"
             session_item = wx.Control(
                 ClassName="mmui::ChatSessionCell",
                 AutomationId=automation_id,
-                searchDepth=15
+                searchDepth=25
             )
             
             if session_item.Exists(0, 0):
@@ -288,42 +353,54 @@ class WeChatController:
         """搜索联系人，保留布尔返回给旧调用方使用。"""
         return self.search_contact_result(contact_name).success
     
-    def _find_chat_input(self, wx):
+    def _find_chat_input(self, wx, max_retries=3, retry_interval=0.15):
         """
-        定位聊天输入框（新版微信兼容）。
+        定位聊天输入框（全面兼容微信 4.x Qt 架构与微信 3.x 旧版架构）。
 
-        旧版用 wx.EditControl(foundIndex=1) 依赖深度优先第二个 EditControl，
-        但新版微信打开公众号文章/视频后右侧会出现独立内置浏览器面板，
-        浏览器里的输入框会让 foundIndex 错位，从而点不到真正的聊天输入框。
-
-        正确做法是用稳定的 AutomationId + ClassName 精确匹配：
+        微信 4.x (Qt 架构):
             AutomationId = "chat_input_field"
             ClassName    = "mmui::ChatInputField"
-        Name 字段是当前会话名称（联系人/群名），会动态变化，因此不参与匹配。
+            实测深度为 17 层。在切换会话时，右侧聊天面板渲染有轻微毫秒级延迟，因此提供短暂重试。
+        微信 3.x (旧版 Win32/CEF 架构):
+            部分版本为 EditControl 且 Name='输入' 或基础 EditControl。
         """
-        try:
-            chat_edit = wx.EditControl(
-                AutomationId="chat_input_field",
-                ClassName="mmui::ChatInputField",
-                searchDepth=20,
-            )
-            if chat_edit.Exists(0, 0):
-                return chat_edit
+        for attempt in range(max_retries):
+            try:
+                # 策略1: 优先 AutomationId + ClassName 精确匹配（微信 4.x 推荐，searchDepth=25）
+                chat_edit = wx.EditControl(
+                    AutomationId="chat_input_field",
+                    ClassName="mmui::ChatInputField",
+                    searchDepth=25,
+                )
+                if chat_edit.Exists(0, 0):
+                    return chat_edit
 
-            chat_edit = wx.EditControl(ClassName="mmui::ChatInputField", searchDepth=20)
-            if chat_edit.Exists(0, 0):
-                logger.warning("仅以 ClassName 匹配到聊天输入框，AutomationId 可能已变化")
-                return chat_edit
+                # 策略2: 仅通过 AutomationId 匹配
+                chat_edit = wx.EditControl(AutomationId="chat_input_field", searchDepth=25)
+                if chat_edit.Exists(0, 0):
+                    logger.warning("仅以 AutomationId 匹配到聊天输入框，ClassName 可能已变化")
+                    return chat_edit
 
-            chat_edit = wx.EditControl(AutomationId="chat_input_field", searchDepth=20)
-            if chat_edit.Exists(0, 0):
-                logger.warning("仅以 AutomationId 匹配到聊天输入框，ClassName 可能已变化")
-                return chat_edit
+                # 策略3: 仅通过 ClassName 匹配
+                chat_edit = wx.EditControl(ClassName="mmui::ChatInputField", searchDepth=25)
+                if chat_edit.Exists(0, 0):
+                    logger.warning("仅以 ClassName 匹配到聊天输入框，AutomationId 可能已变化")
+                    return chat_edit
 
-            return None
-        except Exception as e:
-            logger.error(f"查找聊天输入框异常: {str(e)}")
-            return None
+                # 策略4: 兼容微信 3.x 旧版输入框 (Name='输入')
+                chat_edit = wx.EditControl(Name="输入", searchDepth=25)
+                if chat_edit.Exists(0, 0):
+                    logger.info("匹配到旧版微信聊天输入框 (Name='输入')")
+                    return chat_edit
+
+            except Exception as e:
+                logger.debug(f"查找聊天输入框异常 (尝试 {attempt + 1}/{max_retries}): {str(e)}")
+
+            if attempt < max_retries - 1:
+                time.sleep(retry_interval)
+
+        logger.error("未找到聊天输入框，可能未成功进入目标会话或微信 UI 结构已变化")
+        return None
 
     def _set_clipboard_text(self, text, max_retries=3):
         """

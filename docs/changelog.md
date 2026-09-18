@@ -1,5 +1,30 @@
 # 更新日志
 
+## 2026-09-18
+
+### 兼容：适配微信 4.x (4.1.x) 主窗口昵称标题与控件层级升级（v2.4.0）
+
+**修改文件：** `scripts/wechat_controller.py`、`examples/wx.py`、`README.md`、`test/test_wx4_compatibility.py`
+
+**问题描述：**
+- 微信 PC 升级至 4.1.x（Qt 架构，进程 `Weixin.exe`）后，主窗口标题 `Name` 由原来的固定 `"微信"` 变为**当前登录微信账号的个人昵称**。
+- 旧代码通过 `Name="微信"` 和 `ClassName="mmui::MainWindow"` 组合查找，导致定位主窗口直接失败（报 `WECHAT_WINDOW_NOT_FOUND`），发送功能全面中断。
+- 在 Agent、任务调度器或独立虚拟桌面子进程环境中，线程默认被派生在隔离桌面（如 `Desktop: exebox-xxx`），因未绑定交互式桌面 `WinSta0\default` 导致无法感知前台微信窗口；且 `uiautomation` 导入后锁定桌面抛出 Win32 170 错误。
+- 会话列表项和聊天输入框深度分别达到 14 层和 17 层，原查找深度阈值（15/20）冗余不足，容易偶发超时或未命中。
+
+**解决方案：**
+- ✅ **自动挂载 Windows 交互桌面**：在模块顶层（导入 UI/COM 库前）执行 `_attach_to_default_desktop()`，通过 `OpenDesktopW` 与 `SetThreadDesktop` 将线程桌面关联至用户真实桌面，并加入全局句柄缓存与多线程复核。
+- ✅ **主窗口解耦名称匹配**：新增 `_find_main_window()`，优先使用 `ClassName="mmui::MainWindow"` 查找微信 4.x 主窗口（不限制 Name，自动兼容任意昵称），同时向下兼容微信 3.x（`ClassName="WeChatMainWndForPC"`）和名称兜底。
+- ✅ **搜索深度与重试扩展**：
+  - 会话项查找与搜索后确认的 `searchDepth` 由 15 提升至 25。
+  - 搜索框增加 `ClassName="mmui::XValidatorTextEdit"` 类名兜底，深度提升至 25。
+  - 聊天输入框深度提升至 25，并增加 3 次带轻微重试机制（平滑 Qt 界面会话切换加载延迟），保留微信 3.x 兜底。
+- ✅ **示例与测试套件**：同步更新 `examples/wx.py` 与 `README.md`；新增 `test/test_wx4_compatibility.py` 只读无干扰自动化验证脚本。
+
+**详细文档：** `docs/2609/18微信4.x升级兼容与控件定位优化.md`
+
+---
+
 ## 2026-05-30
 
 ### 优化：消息队列按联系人聚合调度，减少会话切换（v2.3.0）

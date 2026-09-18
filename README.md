@@ -294,10 +294,12 @@ HTTP API 模式：
 
 当前代码中比较关键的定位点包括：
 
-- 微信主窗口：`Name="微信"`，`ClassName="mmui::MainWindow"`
-- 会话项：`ClassName="mmui::ChatSessionCell"`，`AutomationId="session_item_<联系人名>"`
-- 搜索框：`EditControl(Name="搜索")`
-- 聊天输入框：`EditControl(AutomationId="chat_input_field", ClassName="mmui::ChatInputField")`
+- 微信主窗口：
+  - 微信 4.x (Qt 架构)：`ClassName="mmui::MainWindow"`（注意：窗口 `Name` 为当前登录微信账号的个人昵称，不可限定 `Name="微信"`）
+  - 微信 3.x (Win32 架构)：`ClassName="WeChatMainWndForPC"`，`Name="微信"`
+- 会话项：`ClassName="mmui::ChatSessionCell"`，`AutomationId="session_item_<联系人名>"`（搜索深度建议 >= 20）
+- 搜索框：`EditControl(Name="搜索")`，`ClassName="mmui::XValidatorTextEdit"`
+- 聊天输入框：`EditControl(AutomationId="chat_input_field", ClassName="mmui::ChatInputField")`（搜索深度建议 >= 25）
   - 旧版 `EditControl(foundIndex=1)` 在新版微信打开公众号文章/视频后会错位（右侧内置浏览器有自己的输入框），已弃用。
 
 ## 常见问题
