@@ -235,7 +235,8 @@ def main():
     
     # 创建并启动消息队列
     message_interval = config.get('message_interval', 1)
-    message_queue = MessageQueue(message_interval=message_interval)
+    lock_mouse = config.get('lock_mouse_during_send', False)
+    message_queue = MessageQueue(message_interval=message_interval, lock_mouse_during_send=lock_mouse)
     message_queue.start()
     logger.info("消息队列已启动")
     

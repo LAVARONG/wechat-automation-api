@@ -85,6 +85,8 @@ JSON 输出字段包含 `success`、`code`、`message`、`to`、`action`。`succ
 | --- | --- |
 | `--no-api` | 强制同步 CLI 模式，跳过 API 自动检测，确保拿到真实发送结果 |
 | `--api` | 强制 API 队列模式（需先启动后台服务并配置 `token`，否则报错） |
+| `--lock-mouse` | 发送期间临时锁定鼠标，防止用户误触干扰（同步 CLI 模式生效） |
+| `--no-lock-mouse` | 发送时不锁定鼠标（默认使用 config.json 的 lock_mouse_during_send 配置） |
 
 ```powershell
 # 强制同步发送并拿真实结果（不论后台 API 是否在运行）

@@ -127,6 +127,19 @@ python scripts/skill_cli.py --to "文件传输助手" --content "测试消息" -
 
 输出包含 `success`、`code`、`message`、`to`、`action`。退出码 `0` 表示成功，非 `0` 表示失败。
 
+### 鼠标防干扰与锁定选项
+
+默认情况下，程序采用**无感瞬发模式**（输入框原生 `SetFocus` 聚焦 + 毫秒级光标原路复位），发送消息时物理鼠标指针几乎不移动，彻底杜绝光标乱飞。
+
+若在自动化批量执行期间需要防止人手无意晃动鼠标造成点击偏离，可追加 `--lock-mouse`：
+
+```powershell
+# 发信期间临时冻结鼠标操作（操作完成瞬间自动解锁）
+python scripts/skill_cli.py --to "文件传输助手" --content "重要通知" --lock-mouse
+```
+
+也可以通过 `--no-lock-mouse` 强制使用普通无感模式。
+
 ## 系统辅助功能启用
 
 若运行环境为精简版或 Ghost 系统，需确保 Windows 辅助功能正常运行。通过键盘 Win 键唤出开始菜单，输入“讲述人”并开启该功能（开启后可立即关闭），此操作可确保系统底层 UI 自动化接口处于激活状态，避免程序无法识别元素。
@@ -166,10 +179,14 @@ notepad config.json
     "host": "127.0.0.1",
     "port": 8808,
     "message_interval": 1,
+    "lock_mouse_during_send": false,
     "log_level": "INFO",
     "log_file": "wechat_automation.log"
 }
 ```
+
+配置说明：
+- `lock_mouse_during_send`：可选，默认 `false`。若设为 `true`，在发信的大约 1 秒关键窗口期内临时锁定鼠标/键盘，防止人机争抢，操作完成后立即解锁。
 
 `config.json` 已加入 `.gitignore`，可用于保存本地 token。
 

@@ -51,6 +51,7 @@ Desktop.ini
 *.log
 logs/
 wechat_automation.log
+@AutomationLog.txt
 
 # 配置文件（包含敏感信息）
 config.json

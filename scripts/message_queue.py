@@ -20,14 +20,16 @@ logger = logging.getLogger(__name__)
 class MessageQueue:
     """消息队列管理类，负责管理和处理微信消息发送队列"""
 
-    def __init__(self, message_interval=1):
+    def __init__(self, message_interval=1, lock_mouse_during_send=None):
         """
         初始化消息队列
 
         Args:
             message_interval: 消息发送间隔时间（秒），默认1秒
+            lock_mouse_during_send: 发送期间是否锁定鼠标，None 表示读取全局配置
         """
         self.message_interval = message_interval
+        self.lock_mouse_during_send = lock_mouse_during_send
         self.worker_thread = None
         self.running = False
         # _pending 按入队顺序保存待发送消息；_cond 同时充当互斥锁与条件变量
@@ -175,7 +177,7 @@ class MessageQueue:
 
         # 在线程中初始化 COM，这是使用 uiautomation 在子线程中的必需步骤
         with auto.UIAutomationInitializerInThread():
-            wechat_controller = WeChatController()
+            wechat_controller = WeChatController(lock_mouse_during_send=self.lock_mouse_during_send)
             logger.info("微信控制器已在线程中初始化")
 
             last_contact = None     # 上一条处理的联系人（用于粘连排序）

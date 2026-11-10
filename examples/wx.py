@@ -22,11 +22,23 @@ if not wx.Exists(0, 0):
 wx.SetActive()
 time.sleep(1)
 
-# 左上角搜索框，Name 在中文系统下为 "搜索"，微信 4.x 深度通常需 >= 20
-search_box = wx.EditControl(Name='搜索', searchDepth=25)
-search_box.Click()
-search_box.SendKeys('线报转发{Enter}')
-time.sleep(1)
+# 激活搜索框：优先通用快捷键 Ctrl+F（避免新版微信带有“小微AI”按钮或未聚焦态为 GroupControl 的控件匹配失效）
+auto.SendKeys('{Ctrl}f')
+time.sleep(0.3)
+search_box = auto.GetFocusedControl()
+if not search_box or search_box.ControlTypeName != 'EditControl':
+    search_ctrl = wx.EditControl(Name='搜索', searchDepth=25)
+    if not search_ctrl.Exists(0, 0):
+        search_ctrl = wx.GroupControl(Name='搜索', searchDepth=25)
+    if search_ctrl.Exists(0, 0):
+        search_ctrl.Click()
+        time.sleep(0.3)
+        search_box = wx.EditControl(ClassName='mmui::XValidatorTextEdit', searchDepth=25)
+
+if search_box and search_box.Exists(0, 0):
+    search_box.SendKeys('{Ctrl}a{Back}')
+    search_box.SendKeys('线报转发{Enter}')
+    time.sleep(1)
 
 # 聊天输入框：用稳定的 AutomationId + ClassName 精确定位
 # 注意：新版微信打开公众号文章/视频时右侧会出现内置浏览器面板，
@@ -35,5 +47,7 @@ chat_edit = wx.EditControl(
     AutomationId="chat_input_field",
     ClassName="mmui::ChatInputField",
 )
-chat_edit.Click()
+# 聚焦输入框：优先使用 SetFocus 避免移动用户鼠标光标
+if not chat_edit.SetFocus():
+    chat_edit.Click()
 chat_edit.SendKeys('你好，这是自动化测试消息{Enter}')

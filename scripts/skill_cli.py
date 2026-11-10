@@ -66,6 +66,8 @@ def main():
     parser.add_argument("--json", action="store_true", help="以 JSON 格式输出结果，便于 Agent 稳定解析")
     parser.add_argument("--api", action="store_true", help="强制使用 API 模式（需先启动 app.py 服务）")
     parser.add_argument("--no-api", action="store_true", help="强制使用 CLI 模式（跳过 API 自动检测）")
+    parser.add_argument("--lock-mouse", action="store_true", help="发送时临时锁定鼠标，防止误触")
+    parser.add_argument("--no-lock-mouse", action="store_true", help="发送时不锁定鼠标（默认使用 config.json 配置）")
 
     args = parser.parse_args()
 
@@ -137,7 +139,8 @@ def main():
             output(False, "DEPENDENCY_MISSING", f"缺少 Python 依赖: {e.name}。请在项目根目录执行 pip install -r requirements.txt。")
             sys.exit(1)
 
-        controller = WeChatController()
+        lock_mouse = True if args.lock_mouse else (False if args.no_lock_mouse else None)
+        controller = WeChatController(lock_mouse_during_send=lock_mouse)
         if args.action == "sendfile":
             result = controller.search_and_send_file_result(args.to, args.content)
         elif args.action == "sendpic":

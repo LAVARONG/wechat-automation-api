@@ -1,5 +1,48 @@
 # 更新日志
 
+## 2026-11-10
+
+### 优化与新增：鼠标防抢夺（SetFocus + 瞬时复位）与操作期安全锁选项（v2.6.0）
+
+**修改文件：** `scripts/wechat_controller.py`、`scripts/message_queue.py`、`scripts/app.py`、`scripts/skill_cli.py`、`config.json`、`config.json.example`、`SKILL.md`、`examples/wx.py`
+
+**问题描述：**
+- 发送消息或切换会话时，旧代码通过 `Control.Click()` 触发物理鼠标指针平滑移动，导致用户鼠标被强行抢夺拉走，造成强烈视觉跳动与操作打扰。
+- 若自动化点击瞬间用户正在移动鼠标，容易产生人机争夺导致点击偏移。
+
+**解决方案：**
+- ✅ **方案 1：无感基础优化（默认启用）**：
+  - **输入框原生 SetFocus**：聊天输入框全面采用 UI Automation 原生 `SetFocus()` 激活聚焦，完全不移动物理鼠标指针，实现零光标跳动；点击兜底瞬时复位。
+  - **毫秒级快照与瞬发复位（`_safe_click`）**：全局设置 `auto.MAX_MOVE_SECOND = 0` 彻底消除默认 1 秒的缓慢鼠标移动动画，采用 `simulateMove=False, waitTime=0.05` 瞬时传送点击；点击后立即将鼠标原路复位，单次点击耗时从 1.5s 压缩至 100ms 左右，真正实现无感飞速切换。
+  - **会话激活前置置顶**：在会话列表项点击前显式调用 `wx.SetActive()`，确保后台状态下的微信窗口正确响应点击与会话切换。
+- ✅ **方案 2：操作期输入安全锁选项（`lock_mouse_during_send`）**：
+  - 在 `config.json` 及 CLI 中新增 `lock_mouse_during_send` 可选开关（默认 `false`）。
+  - 实现 `_safe_input_lock` 上下文管理器与 `@_with_input_lock` 装饰器：通过 `user32.ClipCursor` 进行 1x1 像素光标约束（普通权限即生效，防滑动手抖），并在 `_safe_click` 内部自适应临时解开与恢复约束以兼容物理移动；同时尝试调用 `user32.BlockInput(True)` 系统级阻断输入；在 `finally` 块中 100% 确保解锁与光标复位，支持多层可重入调用。
+  - `skill_cli.py` 新增 `--lock-mouse` / `--no-lock-mouse` 参数支持。
+
+**详细文档：** `docs/2611/10鼠标防抢夺与操作锁定研发.md`
+
+---
+
+### 修复与增强：微信 4.x 小微 AI 搜索框适配、精准匹配与防串群校验（v2.5.0）
+
+**修改文件：** `scripts/wechat_controller.py`、`examples/wx.py`、`test/test_wx4_compatibility.py`
+
+**问题描述：**
+- 微信 PC 4.x 部分账号灰度上线“小微 AI”按钮后，搜索栏常态（未聚焦）由单一的 `EditControl` 转变为 `GroupControl(Name='搜索')` 复合控件，并在左侧添加了 `mmui::ChatBotButton`。原代码以 `wx.EditControl` 定位导致搜索框找不到（`SEARCH_BOX_NOT_FOUND`）。
+- 搜索词未在联系人列表中完全匹配时，旧逻辑容易误选“搜索网络结果”或“聊天记录”并按回车进入异常状态。
+- 会话切换偶发失败时缺乏当前窗口名称核验机制，导致消息错发到停留的旧群中（串群）。
+
+**解决方案：**
+- ✅ **跨版本搜索框通用激活（`_activate_search_box`）**：采用全版本通用的 `Ctrl+F` 快捷键优先唤醒，并在捕获失败时以多态控件（`GroupControl`/`EditControl`）探测点击兜底，避开小微 AI 按钮点击偏移，自动清理残留字符。
+- ✅ **业务分组白名单与完全匹配**：严格限定仅在 `最常使用`、`联系人`、`群聊`、`功能`（文件传输助手）、`服务号` 分组中进行完全一致匹配；彻底排除 `聊天记录`、`搜索网络结果` 与 `网络查找微信号`。若未找到完全匹配项，安全发送 `{Esc}` 退出，绝不盲目回车。
+- ✅ **会话核对与防串群终极机制（`_verify_active_chat`）**：在会话切换后及物理发送前，双重核对右侧输入框与大标题中的会话名称是否与目标完全一致；若不匹配立即熔断拦截（`TARGET_MISMATCH_ABORT`），从根本上避免串群。
+- ✅ **兼容性套件更新**：更新 `test/test_wx4_compatibility.py`，新增会话核验与防串群检测步骤。
+
+**详细文档：** `docs/2611/10微信搜索框小微适配与会话核验防串群优化.md`
+
+---
+
 ## 2026-09-18
 
 ### 兼容：适配微信 4.x (4.1.x) 主窗口昵称标题与控件层级升级（v2.4.0）
